@@ -55,6 +55,9 @@ const Dashboard = () => {
                 <Link to="/dashboard" className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   Dashboard
                 </Link>
+                <Link to="/companies" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                  Assessments
+                </Link>
                 <a href="#" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   Practice
                 </a>
@@ -64,6 +67,9 @@ const Dashboard = () => {
                 <a href="#" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                   Resources
                 </a>
+                <Link to="/admin" className="border-transparent text-orange-500 hover:border-orange-300 hover:text-orange-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                  Admin Panel
+                </Link>
               </div>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:items-center">
@@ -239,12 +245,18 @@ const Dashboard = () => {
       {/* Mobile bottom navigation */}
       <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 sm:hidden">
         <div className="flex justify-around">
-          <a href="#" className="w-full flex flex-col items-center justify-center px-4 py-2 text-sm font-medium text-indigo-600">
+          <Link to="/dashboard" className="w-full flex flex-col items-center justify-center px-4 py-2 text-sm font-medium text-indigo-600">
             <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
             <span className="mt-1">Home</span>
-          </a>
+          </Link>
+          <Link to="/companies" className="w-full flex flex-col items-center justify-center px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
+            <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="mt-1">Assessments</span>
+          </Link>
           <a href="#" className="w-full flex flex-col items-center justify-center px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
             <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

@@ -32,17 +32,33 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
-        // Check if user already exists
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-            return ResponseEntity.badRequest().body("Email already registered");
-        }
+        var existingUserOpt = userRepository.findByEmail(user.getEmail());
 
-        // Generate and send OTP
         try {
+            if (existingUserOpt.isPresent()) {
+                User existingUser = existingUserOpt.get();
+                if (existingUser.isEmailVerified()) {
+                    // Already registered and verified
+                    return ResponseEntity.badRequest().body("Email already registered and verified");
+                } else {
+                    // Email exists but not verified, resend OTP
+                    otpService.clearOTP(user.getEmail());
+                    String otp = otpService.generateOTP(user.getEmail());
+                    emailService.sendOtpEmail(user.getEmail(), otp);
+
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("message", "Email not verified. New OTP sent. OTP will expire in 2 minutes.");
+                    response.put("userId", existingUser.getId().toString());
+                    response.put("expiresIn", "2 minutes");
+
+                    return ResponseEntity.ok(response);
+                }
+            }
+
+            // New user registration
             String otp = otpService.generateOTP(user.getEmail());
             emailService.sendOtpEmail(user.getEmail(), otp);
 
-            // Save user with unverified email
             user.setEmailVerified(false);
             user.setPassword(passwordEncoder.encode(user.getPassword()));
             User savedUser = userRepository.save(user);

@@ -8,6 +8,17 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
+import Companies from './pages/Companies';
+import AssessmentInstructions from './pages/AssessmentInstructions';
+import AssessmentTest from './pages/AssessmentTest';
+
+// Admin Components
+import AdminLayout from './components/AdminLayout';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminSections from './pages/AdminSections';
+import AdminQuestions from './pages/AdminQuestions';
+import AdminAssessments from './pages/AdminAssessments';
+import AdminCompanies from './pages/AdminCompanies';
 
 // Private Route Component
 const PrivateRoute = ({ children }) => {
@@ -32,6 +43,47 @@ function App() {
               </PrivateRoute>
             } 
           />
+          <Route 
+            path="/companies" 
+            element={
+              <PrivateRoute>
+                <Companies />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/assessment/:assessmentId/instructions" 
+            element={
+              <PrivateRoute>
+                <AssessmentInstructions />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/assessment/:assessmentId/test" 
+            element={
+              <PrivateRoute>
+                <AssessmentTest />
+              </PrivateRoute>
+            } 
+          />
+          
+          {/* Admin Routes */}
+          <Route 
+            path="/admin" 
+            element={
+              <PrivateRoute>
+                <AdminLayout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="sections" element={<AdminSections />} />
+            <Route path="questions" element={<AdminQuestions />} />
+            <Route path="assessments" element={<AdminAssessments />} />
+            <Route path="companies" element={<AdminCompanies />} />
+          </Route>
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
