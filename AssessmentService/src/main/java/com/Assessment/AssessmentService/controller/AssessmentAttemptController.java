@@ -1,11 +1,13 @@
 package com.Assessment.AssessmentService.controller;
 
+import com.Assessment.AssessmentService.entity.AssessmentCandidate;
 import com.Assessment.AssessmentService.service.AssessmentAttemptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -102,6 +104,19 @@ public class AssessmentAttemptController {
             return new ResponseEntity<>(result, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(Map.of("error", e.getMessage()), HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Get all attempted assessments for a user
+     */
+    @GetMapping("/user/{userRef}/attempts")
+    public ResponseEntity<List<AssessmentCandidate>> getUserAttempts(@PathVariable Integer userRef) {
+        try {
+            List<AssessmentCandidate> attempts = assessmentAttemptService.getUserAttempts(userRef);
+            return new ResponseEntity<>(attempts, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(List.of(), HttpStatus.OK);
         }
     }
 }

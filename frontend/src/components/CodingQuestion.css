@@ -1,0 +1,39 @@
+/* Split pane styles for resizable panels */
+.split {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+}
+
+.gutter {
+  background-color: #e5e7eb;
+  background-repeat: no-repeat;
+  background-position: 50%;
+  cursor: col-resize;
+  position: relative;
+}
+
+.gutter:hover {
+  background-color: #d1d5db;
+}
+
+.gutter::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 30px;
+  background-color: #9ca3af;
+  border-radius: 2px;
+}
+
+.gutter.gutter-horizontal {
+  cursor: col-resize;
+}
+
+.gutter.gutter-vertical {
+  cursor: row-resize;
+}
+

@@ -53,5 +53,6 @@ public class Assessment {
     private LocalDateTime createdAt;
     
     @OneToMany(mappedBy = "assessment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @com.fasterxml.jackson.annotation.JsonManagedReference
     private List<AssessmentCandidate> candidates;
 }

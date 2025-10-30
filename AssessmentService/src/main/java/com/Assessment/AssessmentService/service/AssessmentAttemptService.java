@@ -22,7 +22,8 @@ public class AssessmentAttemptService {
     private final RestTemplate restTemplate;
     
     private static final String QUESTION_SERVICE_URL = "http://localhost:8082";
-    
+    private static final String SUBMISSION_SERVICE_URL = "http://localhost:8083";
+
     /**
      * Start an assessment attempt for a candidate
      */
@@ -41,18 +42,31 @@ public class AssessmentAttemptService {
                     newCandidate.setUserRef(userRef);
                     newCandidate.setStatus(AssessmentCandidate.CandidateStatus.IN_PROGRESS);
                     newCandidate.setStartedAt(java.time.LocalDateTime.now());
-                    
+
                     // Initialize analytics fields
                     newCandidate.setTimeRemainingMinutes(assessment.getDurationMinutes());
-                    
+
+                    // Populate denormalized fields
+                    newCandidate.setAssessmentName(assessment.getName());
+                    if (assessment.getCompany() != null) {
+                        newCandidate.setCompanyName(assessment.getCompany().getName());
+                    }
+
                     return assessmentCandidateRepository.save(newCandidate);
                 });
-        
+
         // Update candidate status to IN_PROGRESS if not already and set start time
         if (candidate.getStatus() != AssessmentCandidate.CandidateStatus.IN_PROGRESS) {
             candidate.setStatus(AssessmentCandidate.CandidateStatus.IN_PROGRESS);
             if (candidate.getStartedAt() == null) {
                 candidate.setStartedAt(java.time.LocalDateTime.now());
+            }
+            // Update denormalized fields in case they were missing
+            if (candidate.getAssessmentName() == null) {
+                candidate.setAssessmentName(assessment.getName());
+            }
+            if (candidate.getCompanyName() == null && assessment.getCompany() != null) {
+                candidate.setCompanyName(assessment.getCompany().getName());
             }
             assessmentCandidateRepository.save(candidate);
         }
@@ -270,14 +284,38 @@ public class AssessmentAttemptService {
      * Submit assessment answers and calculate score
      */
     public Map<String, Object> submitAssessment(Long assessmentId, Integer userRef, Map<String, Object> submissionData) {
-        // Get assessment and candidate
+        // Get assessment
         Assessment assessment = assessmentRepository.findById(assessmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Assessment not found with ID: " + assessmentId));
         
-        AssessmentCandidate candidate = assessmentCandidateRepository
-                .findByAssessmentAssessmentIdAndUserRef(assessmentId, userRef)
-                .orElseThrow(() -> new ResourceNotFoundException("Candidate not found for this assessment"));
-        
+        // Find the current IN_PROGRESS attempt ONLY
+        Optional<AssessmentCandidate> inProgressAttempt = assessmentCandidateRepository
+                .findByAssessmentAssessmentIdAndUserRefAndStatus(
+                        assessmentId,
+                        userRef,
+                        AssessmentCandidate.CandidateStatus.IN_PROGRESS
+                );
+
+        AssessmentCandidate candidate;
+
+        if (inProgressAttempt.isPresent()) {
+            // Use the existing IN_PROGRESS attempt
+            candidate = inProgressAttempt.get();
+            log.info("Submitting IN_PROGRESS attempt (ID: {}) for assessment {} and userRef {}",
+                    candidate.getId(), assessmentId, userRef);
+        } else {
+            // Create new attempt (user submitted without starting properly)
+            log.warn("No IN_PROGRESS attempt found for assessment {} and userRef {}. Creating new record.",
+                    assessmentId, userRef);
+            AssessmentCandidate newCandidate = new AssessmentCandidate();
+            newCandidate.setAssessment(assessment);
+            newCandidate.setUserRef(userRef);
+            newCandidate.setStatus(AssessmentCandidate.CandidateStatus.IN_PROGRESS);
+            newCandidate.setStartedAt(java.time.LocalDateTime.now());
+            newCandidate.setTimeRemainingMinutes(assessment.getDurationMinutes());
+            candidate = assessmentCandidateRepository.save(newCandidate);
+        }
+
         // Update candidate with submission data
         candidate.setStatus(AssessmentCandidate.CandidateStatus.COMPLETED);
         candidate.setCompletedAt(java.time.LocalDateTime.now());
@@ -309,6 +347,36 @@ public class AssessmentAttemptService {
         // Save updated candidate
         assessmentCandidateRepository.save(candidate);
         
+        log.info("Successfully submitted attempt (ID: {}) - Status changed to COMPLETED", candidate.getId());
+
+        // Create submission in SubmissionService for evaluation
+        try {
+            Map<String, Object> submissionRequest = new HashMap<>();
+            submissionRequest.put("userId", String.valueOf(userRef));
+            submissionRequest.put("testId", String.valueOf(assessmentId));
+
+            // Add metadata with assessment details
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("assessmentCandidateId", candidate.getId());
+            metadata.put("assessmentName", assessment.getName());
+            metadata.put("companyName", assessment.getCompany() != null ? assessment.getCompany().getName() : null);
+            metadata.put("startedAt", candidate.getStartedAt());
+            metadata.put("completedAt", candidate.getCompletedAt());
+            metadata.put("timeTakenMinutes", candidate.getTimeTakenMinutes());
+            metadata.put("answers", answers);
+            metadata.put("submissionMethod", submissionMethod);
+            metadata.put("browserInfo", candidate.getBrowserInfo());
+            metadata.put("ipAddress", candidate.getIpAddress());
+            submissionRequest.put("metadata", metadata);
+
+            String submissionUrl = SUBMISSION_SERVICE_URL + "/api/submissions";
+            Map<String, Object> submissionResponse = restTemplate.postForObject(submissionUrl, submissionRequest, Map.class);
+            log.info("Created submission in SubmissionService with ID: {}", submissionResponse != null ? submissionResponse.get("id") : "unknown");
+        } catch (Exception e) {
+            log.error("Failed to create submission in SubmissionService: {}", e.getMessage());
+            // Don't fail the assessment submission if SubmissionService is down
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("candidate", candidate);
         result.put("assessment", assessment);
@@ -449,16 +517,47 @@ public class AssessmentAttemptService {
                 return "Aptitude";
             case "sec_basics":
             case "basics":
-                return "Basics";
-            case "sec_javascript":
-            case "javascript":
-                return "JavaScript Basics";
-            case "sec_mental_math":
-            case "mental_math":
-                return "Mental Math";
+                return "Programming Basics";
             default:
-                // Return the original name if no mapping found
                 return legacyName;
         }
+    }
+
+    /**
+     * Get all attempted assessments for a user
+     */
+    public List<AssessmentCandidate> getUserAttempts(Integer userRef) {
+        List<AssessmentCandidate> candidates = assessmentCandidateRepository.findByUserRefOrderByCreatedAtDesc(userRef);
+
+        // Explicitly load the assessment and company to avoid lazy loading issues
+        // Also populate denormalized fields if they are missing
+        candidates.forEach(candidate -> {
+            if (candidate.getAssessment() != null) {
+                Assessment assessment = candidate.getAssessment();
+                assessment.getName(); // Trigger lazy load
+
+                // Populate denormalized fields if missing
+                boolean needsUpdate = false;
+                if (candidate.getAssessmentName() == null) {
+                    candidate.setAssessmentName(assessment.getName());
+                    needsUpdate = true;
+                }
+
+                if (assessment.getCompany() != null) {
+                    assessment.getCompany().getName(); // Trigger lazy load
+                    if (candidate.getCompanyName() == null) {
+                        candidate.setCompanyName(assessment.getCompany().getName());
+                        needsUpdate = true;
+                    }
+                }
+
+                // Save if we updated any denormalized fields
+                if (needsUpdate) {
+                    assessmentCandidateRepository.save(candidate);
+                }
+            }
+        });
+
+        return candidates;
     }
 }

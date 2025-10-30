@@ -2,15 +2,7 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <annotationProcessing>
-      <profile name="Annotation profile for AssessmentService" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
-        </processorPath>
-        <module name="AssessmentService" />
-      </profile>
+      <profile default="true" name="Default" enabled="true" />
       <profile name="Annotation profile for Questions" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -21,6 +13,15 @@
         <module name="Questions" />
         <module name="AuthService" />
       </profile>
+      <profile name="Annotation profile for Submission" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
+        </processorPath>
+        <module name="AssessmentService" />
+      </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
@@ -28,6 +29,7 @@
       <module name="AssessmentService" options="-parameters" />
       <module name="AuthService" options="-parameters" />
       <module name="Questions" options="-parameters" />
+      <module name="SubmissionService" options="-parameters" />
     </option>
   </component>
 </project>

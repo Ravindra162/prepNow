@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Companies from './pages/Companies';
 import AssessmentInstructions from './pages/AssessmentInstructions';
 import AssessmentTest from './pages/AssessmentTest';
+import MyTests from './pages/MyTests';
 
 // Admin Components
 import AdminLayout from './components/AdminLayout';
@@ -49,7 +50,15 @@ function App() {
               <PrivateRoute>
                 <Companies />
               </PrivateRoute>
-            } 
+            }
+          />
+          <Route
+            path="/my-tests"
+            element={
+              <PrivateRoute>
+                <MyTests />
+              </PrivateRoute>
+            }
           />
           <Route 
             path="/assessment/:assessmentId/instructions" 

@@ -4,5 +4,6 @@
     <file url="file://$PROJECT_DIR$/AssessmentService/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/AuthService/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/QuestionService/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/SubmissionService/src/main/java" charset="UTF-8" />
   </component>
 </project>

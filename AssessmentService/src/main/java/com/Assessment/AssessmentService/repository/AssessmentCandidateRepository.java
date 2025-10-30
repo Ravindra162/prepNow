@@ -11,5 +11,11 @@ import java.util.Optional;
 public interface AssessmentCandidateRepository extends JpaRepository<AssessmentCandidate, Long> {
     List<AssessmentCandidate> findByAssessmentAssessmentId(Long assessmentId);
     Optional<AssessmentCandidate> findByAssessmentAssessmentIdAndUserRef(Long assessmentId, Integer userRef);
+    Optional<AssessmentCandidate> findByAssessmentAssessmentIdAndUserRefAndStatus(
+            Long assessmentId,
+            Integer userRef,
+            AssessmentCandidate.CandidateStatus status
+    );
     boolean existsByAssessmentAssessmentIdAndUserRef(Long assessmentId, Integer userRef);
+    List<AssessmentCandidate> findByUserRefOrderByCreatedAtDesc(Integer userRef);
 }

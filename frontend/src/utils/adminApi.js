@@ -351,6 +351,38 @@ export const assessmentService = {
     const response = await assessmentApi.delete(`/assessments/${assessmentId}/candidates/${candidateId}`);
     return response.data;
   },
+
+  // Assessment Attempt APIs
+  startAssessmentAttempt: async (assessmentId, userRef) => {
+    const response = await assessmentApi.post(`/assessments/${assessmentId}/attempt?userRef=${userRef}`);
+    return response.data;
+  },
+
+  getAssessmentAttemptData: async (assessmentId, userRef) => {
+    const response = await assessmentApi.get(`/assessments/${assessmentId}/attempt?userRef=${userRef}`);
+    return response.data;
+  },
+
+  submitAssessment: async (assessmentId, userRef, submissionData) => {
+    const response = await assessmentApi.post(`/assessments/${assessmentId}/submit?userRef=${userRef}`, submissionData);
+    return response.data;
+  },
+
+  updateProgress: async (assessmentId, userRef, progressData) => {
+    const response = await assessmentApi.put(`/assessments/${assessmentId}/progress?userRef=${userRef}`, progressData);
+    return response.data;
+  },
+
+  getAssessmentResults: async (assessmentId, userRef) => {
+    const response = await assessmentApi.get(`/assessments/${assessmentId}/results?userRef=${userRef}`);
+    return response.data;
+  },
+
+  // Get user's attempted assessments
+  getUserAttemptedAssessments: async (userRef) => {
+    const response = await assessmentApi.get(`/assessments/user/${userRef}/attempts`);
+    return response.data;
+  },
 };
 
 export default { questionService, assessmentService };
