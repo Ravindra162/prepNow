@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+import java.util.Map;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,5 +22,9 @@ public class QuestionResult {
     private Double maxPoints;
     private String feedback;
     private String difficulty;
-}
 
+    // For coding questions - test case execution details
+    private Integer totalTestCases;
+    private Integer passedTestCases;
+    private List<Map<String, Object>> testCaseResults;
+}

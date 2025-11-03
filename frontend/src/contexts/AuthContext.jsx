@@ -102,10 +102,12 @@ export function AuthProvider({ children }) {
     try {
       const response = await authService.login(email, password);
       
-      // Save user data to local storage
-      const user = { 
+      // Save user data including role to local storage
+      const user = {
         email,
         name: response.username || email.split('@')[0],
+        role: response.role || 'USER',
+        isAdmin: response.isAdmin || false,
         isAuthenticated: true
       };
       
@@ -114,7 +116,9 @@ export function AuthProvider({ children }) {
       
       return { 
         success: true, 
-        username: response.username 
+        username: response.username,
+        role: user.role,
+        isAdmin: user.isAdmin
       };
     } catch (error) {
       return { 

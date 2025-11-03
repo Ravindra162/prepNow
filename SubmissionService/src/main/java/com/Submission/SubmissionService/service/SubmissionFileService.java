@@ -48,11 +48,6 @@ public class SubmissionFileService {
 
         file = fileRepository.save(file);
 
-        if (!submission.getFileIds().contains(file.getId())) {
-            submission.getFileIds().add(file.getId());
-            submissionRepository.save(submission);
-        }
-
         log.info("Code uploaded successfully with id: {}", file.getId());
         return mapToResponse(file);
     }
@@ -112,4 +107,3 @@ public class SubmissionFileService {
                 .build();
     }
 }
-

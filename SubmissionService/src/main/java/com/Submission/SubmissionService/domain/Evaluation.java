@@ -10,9 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Data
 @Builder
@@ -41,14 +39,6 @@ public class Evaluation {
     private Integer codingTotal;
 
     private Instant evaluatedAt;
-    private String evaluatorId;
-    private String remarks;
-
-    @Builder.Default
-    private Map<String, Double> breakdown = new HashMap<>();
-
-    @Builder.Default
-    private Map<String, Object> detailedResults = new HashMap<>();
 
     // Question-level results
     @Builder.Default

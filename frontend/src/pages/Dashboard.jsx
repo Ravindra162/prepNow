@@ -101,13 +101,30 @@ const Dashboard = () => {
     try {
       setLoading(true);
       await logout();
-      toast.success('Successfully logged out');
+      toast.success('Logged out successfully');
       navigate('/login');
     } catch (error) {
-      toast.error('Failed to log out');
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      'EVALUATED': { color: 'bg-green-100 text-green-800', text: 'Evaluated' },
+      'IN_PROGRESS': { color: 'bg-yellow-100 text-yellow-800', text: 'In Progress' },
+      'SUBMITTED': { color: 'bg-blue-100 text-blue-800', text: 'Submitted' },
+      'NOT_STARTED': { color: 'bg-gray-100 text-gray-800', text: 'Not Started' }
+    };
+
+    const config = statusConfig[status] || statusConfig['NOT_STARTED'];
+    return (
+      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${config.color}`}>
+        {config.text}
+      </span>
+    );
   };
 
   const stats = [
@@ -117,52 +134,45 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 flex items-center">
-                <span className="text-xl font-bold text-indigo-600">PrepNow</span>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <Link to="/dashboard" className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Dashboard
-                </Link>
-                <Link to="/companies" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Assessments
-                </Link>
-                <a href="#" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                  Practice
-                </a>
-                <Link to="/admin" className="border-transparent text-orange-500 hover:border-orange-300 hover:text-orange-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome, {currentUser?.name || 'User'}
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">{currentUser?.email}</p>
+              {currentUser?.isAdmin && (
+                <p className="mt-1 text-sm font-medium text-indigo-600">Admin Account</p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              {/* Admin Panel Link for Admin Users */}
+              {currentUser?.isAdmin && (
+                <Link
+                  to="/admin"
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
                   Admin Panel
                 </Link>
-              </div>
-            </div>
-            <div className="hidden sm:ml-6 sm:flex sm:items-center">
-              <div className="ml-3 relative">
-                <div>
-                  <button type="button" className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" id="user-menu" aria-expanded="false" aria-haspopup="true">
-                    <span className="sr-only">Open user menu</span>
-                    <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium">
-                      {currentUser?.name?.[0]?.toUpperCase() || 'U'}
-                    </div>
-                  </button>
-                </div>
-              </div>
+              )}
               <button
                 onClick={handleLogout}
                 disabled={loading}
-                className="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
               >
-                {loading ? 'Signing out...' : 'Sign out'}
+                {loading ? 'Logging out...' : 'Logout'}
               </button>
             </div>
           </div>
         </div>
-      </nav>
+      </header>
 
       <div className="py-10">
         <header>
@@ -261,15 +271,7 @@ const Dashboard = () => {
                                     )}
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                      assessment.status === 'EVALUATED'
-                                        ? 'bg-green-100 text-green-800'
-                                        : assessment.status === 'IN_PROGRESS'
-                                        ? 'bg-yellow-100 text-yellow-800'
-                                        : 'bg-blue-100 text-blue-800'
-                                    }`}>
-                                      {assessment.status.replace('_', ' ')}
-                                    </span>
+                                    {getStatusBadge(assessment.status)}
                                   </td>
                                 </tr>
                               ))}

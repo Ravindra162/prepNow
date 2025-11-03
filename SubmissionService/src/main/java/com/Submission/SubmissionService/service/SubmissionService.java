@@ -74,9 +74,6 @@ public class SubmissionService {
                 .orElseThrow(() -> new RuntimeException("Submission not found with id: " + id));
 
         submission.setStatus(status);
-        if (status == SubmissionStatus.COMPLETED) {
-            submission.setSubmittedAt(Instant.now());
-        }
 
         submission = submissionRepository.save(submission);
         return mapToResponse(submission);
@@ -90,7 +87,6 @@ public class SubmissionService {
         submission.setTotalScore(totalScore);
         submission.setMaxScore(maxScore);
         submission.setStatus(SubmissionStatus.COMPLETED);
-        submission.setSubmittedAt(Instant.now());
 
         submission = submissionRepository.save(submission);
         return mapToResponse(submission);
@@ -115,14 +111,11 @@ public class SubmissionService {
                 .userId(submission.getUserId())
                 .testId(submission.getTestId())
                 .createdAt(submission.getCreatedAt())
-                .submittedAt(submission.getSubmittedAt())
                 .status(submission.getStatus())
                 .totalScore(submission.getTotalScore())
                 .maxScore(submission.getMaxScore())
                 .metadata(submission.getMetadata())
-                .fileIds(submission.getFileIds())
                 .evaluationId(submission.getEvaluationId())
                 .build();
     }
 }
-

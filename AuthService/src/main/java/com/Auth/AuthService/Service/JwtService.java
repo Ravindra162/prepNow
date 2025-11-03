@@ -1,11 +1,14 @@
 package com.Auth.AuthService.Service;
 
+import com.Auth.AuthService.Model.User;
+import com.Auth.AuthService.Repo.UserRepo;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
@@ -17,15 +20,22 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Service
+@RequiredArgsConstructor
 public class JwtService {
 
     @Value("${jwt.secret}")
     private String secretKey;
 
+    private final UserRepo userRepository;
+
     private static final long WEEK_IN_MILLISECONDS = 7 * 24 * 60 * 60 * 1000L;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
     public Date extractExpiration(String token) {
@@ -51,6 +61,15 @@ public class JwtService {
 
     public String generateToken(String userName) {
         Map<String, Object> claims = new HashMap<>();
+
+        // Add user role to claims
+        User user = userRepository.findByEmail(userName).orElse(null);
+        if (user != null) {
+            claims.put("role", user.getRole());
+            claims.put("userId", user.getId());
+            claims.put("username", user.getUsername());
+        }
+
         return createToken(claims, userName);
     }
 

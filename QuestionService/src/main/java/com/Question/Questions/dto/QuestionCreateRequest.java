@@ -51,7 +51,18 @@ public class QuestionCreateRequest {
             question.setDifficultyLevel(Question.DifficultyLevel.valueOf(this.difficultyLevel.toUpperCase()));
         }
         
-        question.setPoints(this.points);
+        // Set points with default value for coding questions
+        if (this.points != null) {
+            question.setPoints(this.points);
+        } else {
+            // Default: 50 points for CODING questions, 1 point for MCQ
+            if ("CODING".equalsIgnoreCase(this.questionType)) {
+                question.setPoints(50);
+            } else {
+                question.setPoints(1);
+            }
+        }
+
         question.setTimeLimitMinutes(this.timeLimitMinutes);
         question.setCodeTemplate(this.codeTemplate);
         question.setProgrammingLanguage(this.programmingLanguage);

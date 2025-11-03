@@ -21,6 +21,9 @@ import AdminQuestions from './pages/AdminQuestions';
 import AdminAssessments from './pages/AdminAssessments';
 import AdminCompanies from './pages/AdminCompanies';
 
+// Route Protection Components
+import AdminRoute from './components/AdminRoute';
+
 // Private Route Component
 const PrivateRoute = ({ children }) => {
   const { currentUser } = useAuth();
@@ -36,13 +39,13 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route 
+          <Route
             path="/dashboard" 
             element={
               <PrivateRoute>
                 <Dashboard />
               </PrivateRoute>
-            } 
+            }
           />
           <Route 
             path="/companies" 
@@ -66,7 +69,7 @@ function App() {
               <PrivateRoute>
                 <AssessmentInstructions />
               </PrivateRoute>
-            } 
+            }
           />
           <Route 
             path="/assessment/:assessmentId/test" 
@@ -74,16 +77,16 @@ function App() {
               <PrivateRoute>
                 <AssessmentTest />
               </PrivateRoute>
-            } 
+            }
           />
           
-          {/* Admin Routes */}
-          <Route 
+          {/* Admin Routes - Protected by AdminRoute */}
+          <Route
             path="/admin" 
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <AdminLayout />
-              </PrivateRoute>
+              </AdminRoute>
             }
           >
             <Route index element={<AdminDashboard />} />

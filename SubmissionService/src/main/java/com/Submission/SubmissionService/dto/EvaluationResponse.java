@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 @Data
 @Builder
@@ -36,11 +35,6 @@ public class EvaluationResponse {
     private Integer codingTotal;
 
     private Instant evaluatedAt;
-    private String evaluatorId;
-    private String remarks;
-
-    private Map<String, Double> breakdown;
-    private Map<String, Object> detailedResults;
 
     // Question-level results
     private List<QuestionResult> questionResults;

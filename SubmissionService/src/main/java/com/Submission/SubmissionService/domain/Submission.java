@@ -9,9 +9,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Data
@@ -30,7 +28,6 @@ public class Submission {
     private String testId;
 
     private Instant createdAt;
-    private Instant submittedAt;
 
     @Indexed
     private SubmissionStatus status;
@@ -41,9 +38,5 @@ public class Submission {
     @Builder.Default
     private Map<String, Object> metadata = new HashMap<>();
 
-    @Builder.Default
-    private List<String> fileIds = new ArrayList<>();
-
     private String evaluationId;
 }
-

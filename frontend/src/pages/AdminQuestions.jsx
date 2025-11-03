@@ -418,19 +418,52 @@ const AdminQuestions = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Difficulty Level *
-                  </label>
-                  <select
-                    value={formData.difficultyLevel}
-                    onChange={(e) => setFormData({ ...formData, difficultyLevel: e.target.value })}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                  >
-                    <option value="EASY">Easy</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HARD">Hard</option>
-                  </select>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Difficulty Level *
+                    </label>
+                    <select
+                      value={formData.difficultyLevel}
+                      onChange={(e) => setFormData({ ...formData, difficultyLevel: e.target.value })}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="EASY">Easy</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HARD">Hard</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Points
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={formData.points}
+                      onChange={(e) => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                      placeholder={formData.questionType === 'CODING' ? '50' : '1'}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      {formData.questionType === 'CODING' ? 'Default: 50' : 'Default: 1'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Time Limit (min)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="180"
+                      value={formData.timeLimitMinutes}
+                      onChange={(e) => setFormData({ ...formData, timeLimitMinutes: parseInt(e.target.value) || 5 })}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                      placeholder="5"
+                    />
+                  </div>
                 </div>
 
                 <div>

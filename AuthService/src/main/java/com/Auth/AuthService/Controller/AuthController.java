@@ -61,6 +61,10 @@ public class AuthController {
 
             user.setEmailVerified(false);
             user.setPassword(passwordEncoder.encode(user.getPassword()));
+            user.setRole("USER"); // Set default role
+            user.setActive(true);
+            user.setLocked(false);
+            user.setFailedLoginAttempts(0);
             User savedUser = userRepository.save(user);
 
             Map<String, Object> response = new HashMap<>();
@@ -132,12 +136,23 @@ public class AuthController {
                     return ResponseEntity.badRequest().body("Please verify your email first");
                 }
 
+                if (user.isLocked()) {
+                    return ResponseEntity.badRequest().body("Account is locked. Please contact administrator.");
+                }
+
+                if (!user.isActive()) {
+                    return ResponseEntity.badRequest().body("Account is inactive. Please contact administrator.");
+                }
+
                 String token = jwtService.generateToken(request.email());
                 jwtService.createCookie(token, response);
 
                 Map<String, Object> responseBody = new HashMap<>();
                 responseBody.put("message", "Login successful");
                 responseBody.put("username", user.getUsername());
+                responseBody.put("email", user.getEmail());
+                responseBody.put("role", user.getRole());
+                responseBody.put("isAdmin", user.isAdmin());
 
                 return ResponseEntity.ok(responseBody);
             }

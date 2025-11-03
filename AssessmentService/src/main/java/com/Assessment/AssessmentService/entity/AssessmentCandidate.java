@@ -33,7 +33,7 @@ public class AssessmentCandidate {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CandidateStatus status = CandidateStatus.INVITED;
-    
+
     // Denormalized fields for easier access
     @Column(name = "assessment_name")
     private String assessmentName;

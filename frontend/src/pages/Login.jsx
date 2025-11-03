@@ -58,11 +58,16 @@ const Login = () => {
 
     try {
       setLoading(true);
-      const { success, error, username } = await login(formData.email, formData.password);
-      
+      const { success, error, username, isAdmin } = await login(formData.email, formData.password);
+
       if (success) {
         toast.success(`Welcome back, ${username || 'User'}!`);
-        navigate('/dashboard');
+        // Redirect based on user role
+        if (isAdmin) {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         toast.error(error || 'Failed to log in. Please check your credentials.');
       }

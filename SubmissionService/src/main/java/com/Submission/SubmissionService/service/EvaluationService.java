@@ -3,6 +3,8 @@ package com.Submission.SubmissionService.service;
 import com.Submission.SubmissionService.domain.*;
 import com.Submission.SubmissionService.dto.EvaluateSubmissionRequest;
 import com.Submission.SubmissionService.dto.EvaluationResponse;
+import com.Submission.SubmissionService.dto.RunCodeRequest;
+import com.Submission.SubmissionService.dto.RunCodeResponse;
 import com.Submission.SubmissionService.repository.EvaluationRepository;
 import com.Submission.SubmissionService.repository.SubmissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ public class EvaluationService {
     private final EvaluationRepository evaluationRepository;
     private final SubmissionRepository submissionRepository;
     private final RestTemplate restTemplate;
+    private final PistonApiService pistonApiService;
 
     private static final String ASSESSMENT_SERVICE_URL = "http://localhost:8081";
     private static final String QUESTION_SERVICE_URL = "http://localhost:8082";
@@ -149,9 +152,12 @@ public class EvaluationService {
                         attempted++;
                     }
 
+                    // Always add points awarded to total score (supports partial credit)
+                    totalScore += result.getPointsAwarded();
+
+                    // Track correct/incorrect based on isCorrect flag
                     if (result.getIsCorrect() != null && result.getIsCorrect()) {
                         correct++;
-                        totalScore += result.getPointsAwarded();
                     } else if (result.getUserAnswer() != null && !result.getUserAnswer().isEmpty()) {
                         incorrect++;
                     }
@@ -167,9 +173,11 @@ public class EvaluationService {
                     } else if ("CODING".equals(questionType)) {
                         codingTotal++;
                         codingMaxScore += points;
+                        // Always add points awarded for coding questions (supports partial credit)
+                        codingScore += result.getPointsAwarded();
+                        // Only increment "passed" counter if ALL test cases passed
                         if (result.getIsCorrect() != null && result.getIsCorrect()) {
                             codingPassed++;
-                            codingScore += result.getPointsAwarded();
                         }
                     }
                 }
@@ -272,18 +280,8 @@ public class EvaluationService {
             // Evaluate MCQ question
             return evaluateMCQQuestion(resultBuilder, questionData, userAnswer, points, questionNumber);
         } else if ("CODING".equals(questionType)) {
-            // For coding questions, we'll mark as correct if user provided an answer
-            boolean hasAnswer = userAnswer != null && !userAnswer.trim().isEmpty();
-
-            log.info("  → User Answer: {}", hasAnswer ? "Code submitted" : "No answer");
-            log.info("  → Result: {} ({} points)",
-                    hasAnswer ? "✓ SUBMITTED" : "✗ NOT SUBMITTED",
-                    hasAnswer ? points : 0);
-
-            resultBuilder
-                    .isCorrect(hasAnswer)
-                    .pointsAwarded(hasAnswer ? points.doubleValue() : 0.0)
-                    .feedback(hasAnswer ? "Code submitted" : "No code submitted");
+            // Evaluate coding question with test cases
+            return evaluateCodingQuestion(resultBuilder, questionData, userAnswer, points, questionNumber);
         } else {
             log.info("  → Unknown question type");
             resultBuilder
@@ -343,38 +341,28 @@ public class EvaluationService {
         }
 
         // Now determine what the user selected
-        // User's answer could be:
-        // 1. Option label (A, B, C, D)
-        // 2. Option text (full text of the option)
-        // 3. Option ID (numeric ID)
-
         if (userAnswer != null && !userAnswer.isEmpty()) {
             // Check if user answer matches any option label (A, B, C, D)
             if (userAnswer.length() <= 2 && userAnswer.matches("[A-Da-d]")) {
-                // User selected by label (A, B, C, D)
                 userAnswerLabel = userAnswer.toUpperCase();
             } else {
                 // User might have selected by option text or ID
-                // Find which option matches the user's answer
                 for (Map<String, Object> option : mcqOptions) {
                     String optionLabel = (String) option.get("optionLabel");
                     String optionText = (String) option.get("optionText");
                     Object optionIdObj = option.get("optionId");
                     String optionId = optionIdObj != null ? String.valueOf(optionIdObj) : null;
 
-                    // Check if user answer matches option text
                     if (optionText != null && optionText.equals(userAnswer)) {
                         userAnswerLabel = optionLabel;
                         break;
                     }
-                    // Check if user answer matches option ID
                     if (optionId != null && optionId.equals(userAnswer)) {
                         userAnswerLabel = optionLabel;
                         break;
                     }
                 }
 
-                // If we still couldn't find a match, use the original answer
                 if (userAnswerLabel == null) {
                     userAnswerLabel = userAnswer;
                 }
@@ -406,6 +394,366 @@ public class EvaluationService {
                 .feedback(isAnswerCorrect ? "Correct!" :
                          (userAnswer == null ? "Not attempted" : "Incorrect. Correct answer: " + correctAnswerLabel))
                 .build();
+    }
+
+    /**
+     * Evaluate coding question by checking stored test case results (no re-execution)
+     */
+    private QuestionResult evaluateCodingQuestion(QuestionResult.QuestionResultBuilder resultBuilder,
+                                                  Map<String, Object> questionData,
+                                                  String userCode,
+                                                  Integer points,
+                                                  int questionNumber) {
+        // Check if user submitted code
+        if (userCode == null || userCode.trim().isEmpty()) {
+            log.info("  → User Answer: No code submitted");
+            log.info("  → Result: ✗ NOT SUBMITTED (0/{} points)", points);
+
+            return resultBuilder
+                    .isCorrect(false)
+                    .pointsAwarded(0.0)
+                    .totalTestCases(0)
+                    .passedTestCases(0)
+                    .feedback("No code submitted")
+                    .build();
+        }
+
+        // Get test cases from question data
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> testCases = (List<Map<String, Object>>) questionData.get("testCases");
+
+        if (testCases == null || testCases.isEmpty()) {
+            log.info("  → ⚠️  No test cases available for this coding question");
+            log.info("  → Result: ✓ CODE SUBMITTED (Full points awarded)");
+
+            // If no test cases, award full points for submitting code
+            return resultBuilder
+                    .isCorrect(true)
+                    .pointsAwarded(points.doubleValue())
+                    .totalTestCases(0)
+                    .passedTestCases(0)
+                    .feedback("Code submitted (no test cases to validate)")
+                    .build();
+        }
+
+        // Check if test case results are already stored in questionData (from submission)
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> storedResults = (List<Map<String, Object>>) questionData.get("testCaseResults");
+
+        List<Map<String, Object>> testCaseResults;
+        if (storedResults != null && !storedResults.isEmpty()) {
+            log.info("  → Using pre-computed test case results from submission");
+            testCaseResults = storedResults;
+        } else {
+            log.info("  → No stored results found, computing test case results");
+            testCaseResults = fetchAndRunTestCases(questionData, userCode, testCases);
+        }
+
+        // Check if there was an execution error
+        boolean hasExecutionError = testCaseResults.stream()
+                .anyMatch(result -> Boolean.TRUE.equals(result.get("executionError")));
+
+        if (hasExecutionError) {
+            // Get the error message from the first test case with error
+            Map<String, Object> errorResult = testCaseResults.stream()
+                    .filter(result -> Boolean.TRUE.equals(result.get("executionError")))
+                    .findFirst()
+                    .orElse(null);
+
+            String errorMessage = errorResult != null ?
+                (String) errorResult.get("actualOutput") : "Code execution failed";
+
+            // Extract readable error message
+            String cleanError = errorMessage;
+            if (errorMessage.startsWith("EXECUTION_ERROR:")) {
+                cleanError = errorMessage.substring("EXECUTION_ERROR:".length()).trim();
+                // Limit error message length
+                if (cleanError.length() > 200) {
+                    cleanError = cleanError.substring(0, 200) + "...";
+                }
+            }
+
+            log.info("  → User Answer: Code submitted");
+            log.info("  → Result: ⚠️ EXECUTION ERROR");
+            log.warn("  → Error: {}", cleanError.substring(0, Math.min(100, cleanError.length())));
+
+            return resultBuilder
+                    .isCorrect(null) // null means execution error, not wrong answer
+                    .pointsAwarded(0.0)
+                    .totalTestCases(testCases.size())
+                    .passedTestCases(0)
+                    .testCaseResults(testCaseResults)
+                    .feedback("Code execution failed: " + cleanError)
+                    .build();
+        }
+
+        // Calculate score based on passed test cases
+        int totalTestCases = testCases.size();
+        int passedTestCases = (int) testCaseResults.stream()
+                .filter(result -> Boolean.TRUE.equals(result.get("passed")))
+                .count();
+
+        // Calculate points: (passed / total) * maxPoints
+        double awardedPoints = totalTestCases > 0
+                ? ((double) passedTestCases / totalTestCases) * points
+                : 0.0;
+
+        boolean allPassed = passedTestCases == totalTestCases;
+
+        log.info("  → User Answer: Code submitted");
+        log.info("  → Test Cases: {}/{} passed", passedTestCases, totalTestCases);
+        log.info("  → Result: {} ({}/{} points)",
+                allPassed ? "✓ ALL TESTS PASSED" : "⚠ PARTIAL SUCCESS",
+                String.format("%.2f", awardedPoints), points);
+
+        return resultBuilder
+                .isCorrect(allPassed)
+                .pointsAwarded(awardedPoints)
+                .totalTestCases(totalTestCases)
+                .passedTestCases(passedTestCases)
+                .testCaseResults(testCaseResults)
+                .feedback(String.format("Passed %d out of %d test cases", passedTestCases, totalTestCases))
+                .build();
+    }
+
+    /**
+     * Fetch test cases from QuestionService and run them against user code
+     */
+    private List<Map<String, Object>> fetchAndRunTestCases(Map<String, Object> questionData,
+                                                            String userCode,
+                                                            List<Map<String, Object>> testCases) {
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        String programmingLanguage = (String) questionData.get("programmingLanguage");
+
+        // If no language specified or seems wrong, try to detect from code
+        String detectedLanguage = detectLanguageFromCode(userCode);
+        if (programmingLanguage == null || programmingLanguage.isEmpty()) {
+            log.warn("    No programmingLanguage specified in question data, using detected language: {}", detectedLanguage);
+            programmingLanguage = detectedLanguage;
+        } else if (!isCodeMatchingLanguage(userCode, programmingLanguage)) {
+            log.warn("    Code doesn't match specified language '{}', detected language: {}", programmingLanguage, detectedLanguage);
+            log.warn("    Using detected language instead");
+            programmingLanguage = detectedLanguage;
+        }
+
+        log.info("    Executing code as: {}", programmingLanguage);
+
+        for (int i = 0; i < testCases.size(); i++) {
+            Map<String, Object> testCase = testCases.get(i);
+            Map<String, Object> result = new HashMap<>();
+
+            String input = (String) testCase.get("inputData");
+            String expectedOutput = (String) testCase.get("expectedOutput");
+            Boolean isSample = (Boolean) testCase.get("isSample");
+
+            // Run the test case
+            String actualOutput = executeCodeWithInput(userCode, input, programmingLanguage);
+
+            // Check if it's an execution error
+            boolean isExecutionError = actualOutput != null && actualOutput.startsWith("EXECUTION_ERROR:");
+            boolean passed = !isExecutionError && compareOutputs(expectedOutput, actualOutput);
+
+            result.put("testCaseNumber", i + 1);
+            result.put("input", isSample != null && isSample ? input : "Hidden");
+            result.put("expectedOutput", isSample != null && isSample ? expectedOutput : "Hidden");
+            result.put("actualOutput", isExecutionError ? "Execution Error" : actualOutput);
+            result.put("passed", passed);
+            result.put("isSample", isSample);
+            result.put("executionError", isExecutionError);
+
+            // Store the full error for the first test case (for feedback)
+            if (isExecutionError && i == 0) {
+                result.put("actualOutput", actualOutput); // Keep full error for feedback
+            }
+
+            results.add(result);
+
+            if (isExecutionError) {
+                log.debug("    Test Case #{}: EXECUTION ERROR", i + 1);
+            } else {
+                log.debug("    Test Case #{}: {}", i + 1, passed ? "PASSED" : "FAILED");
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Detect programming language from code content
+     */
+    private String detectLanguageFromCode(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            return "python"; // default
+        }
+
+        String trimmedCode = code.trim();
+
+        // C++ detection
+        if (trimmedCode.contains("#include") &&
+            (trimmedCode.contains("iostream") || trimmedCode.contains("bits/stdc++.h") ||
+             trimmedCode.contains("using namespace std") || trimmedCode.contains("std::"))) {
+            return "c++";
+        }
+
+        // C detection (has includes but no C++ features)
+        if (trimmedCode.contains("#include") && !trimmedCode.contains("namespace") &&
+            !trimmedCode.contains("std::") && !trimmedCode.contains("cout") && !trimmedCode.contains("cin")) {
+            return "c";
+        }
+
+        // Java detection
+        if (trimmedCode.contains("public class") || trimmedCode.contains("public static void main") ||
+            trimmedCode.contains("System.out.println") || trimmedCode.contains("import java.")) {
+            return "java";
+        }
+
+        // JavaScript detection
+        if (trimmedCode.contains("console.log") || trimmedCode.contains("const ") ||
+            trimmedCode.contains("let ") || trimmedCode.contains("=>") ||
+            trimmedCode.contains("function ") || trimmedCode.contains("var ")) {
+            return "javascript";
+        }
+
+        // Python detection (default if nothing else matches)
+        if (trimmedCode.contains("def ") || trimmedCode.contains("import ") ||
+            trimmedCode.contains("print(") || trimmedCode.contains("if __name__")) {
+            return "python";
+        }
+
+        // Default to python if can't detect
+        return "python";
+    }
+
+    /**
+     * Check if code matches the specified language
+     */
+    private boolean isCodeMatchingLanguage(String code, String language) {
+        if (code == null || language == null) {
+            return true; // can't verify, assume it's okay
+        }
+
+        String detectedLanguage = detectLanguageFromCode(code);
+        String normalizedSpecified = normalizeLanguage(language);
+        String normalizedDetected = normalizeLanguage(detectedLanguage);
+
+        return normalizedSpecified.equals(normalizedDetected);
+    }
+
+    /**
+     * Execute user code with given input using Piston API
+     */
+    private String executeCodeWithInput(String code, String input, String language) {
+        try {
+            log.debug("    Executing {} code with Piston API", language);
+
+            // Normalize language name
+            String normalizedLanguage = normalizeLanguage(language);
+
+            // Execute code using Piston API
+            RunCodeRequest runRequest = new RunCodeRequest();
+            runRequest.setLanguage(normalizedLanguage);
+            runRequest.setCode(code);
+            runRequest.setStdin(input != null ? input : "");
+            runRequest.setVersion("*"); // Latest version
+            runRequest.setRunTimeout(5000);
+            runRequest.setCompileTimeout(10000);
+            runRequest.setCompileMemoryLimit(-1L);
+            runRequest.setRunMemoryLimit(-1L);
+
+            // Call Piston API
+            RunCodeResponse response = pistonApiService.executeCode(runRequest);
+
+            if (response == null || response.getRun() == null) {
+                log.error("    No response from Piston API");
+                return "EXECUTION_ERROR:No response from execution service";
+            }
+
+            RunCodeResponse.RunResult runResult = response.getRun();
+
+            // Check for execution errors
+            if (runResult.getCode() != null && runResult.getCode() != 0) {
+                String stderr = runResult.getStderr();
+                if (stderr != null && !stderr.isEmpty()) {
+                    log.warn("    Code execution failed: {}", stderr);
+                    return "EXECUTION_ERROR:" + stderr;
+                }
+                return "EXECUTION_ERROR:Execution failed with exit code " + runResult.getCode();
+            }
+
+            // Successful execution - return stdout
+            String stdout = runResult.getStdout();
+            if (stdout != null && !stdout.isEmpty()) {
+                return stdout;
+            }
+
+            // Check for output field
+            String output = runResult.getOutput();
+            if (output != null && !output.isEmpty()) {
+                return output;
+            }
+
+            // No output generated
+            String stderr = runResult.getStderr();
+            if (stderr != null && !stderr.isEmpty()) {
+                log.warn("    No stdout but has stderr");
+                return "EXECUTION_ERROR:" + stderr;
+            }
+
+            log.warn("    Code execution returned no output");
+            return "EXECUTION_ERROR:No output generated";
+
+        } catch (Exception e) {
+            log.error("    Error executing code: {}", e.getMessage(), e);
+            return "EXECUTION_ERROR:" + e.getMessage();
+        }
+    }
+
+    /**
+     * Normalize language name for Piston API
+     */
+    private String normalizeLanguage(String language) {
+        if (language == null) {
+            return "python";
+        }
+
+        switch (language.toLowerCase().trim()) {
+            case "python":
+            case "python3":
+            case "py":
+                return "python";
+            case "javascript":
+            case "js":
+            case "node":
+            case "nodejs":
+                return "javascript";
+            case "java":
+                return "java";
+            case "c++":
+            case "cpp":
+            case "cplusplus":
+                return "c++";
+            case "c":
+                return "c";
+            default:
+                log.warn("Unknown language '{}', defaulting to python", language);
+                return "python";
+        }
+    }
+
+    /**
+     * Compare expected and actual outputs
+     */
+    private boolean compareOutputs(String expected, String actual) {
+        if (expected == null || actual == null) {
+            return false;
+        }
+
+        // Normalize outputs (trim whitespace, normalize line endings)
+        String normalizedExpected = expected.trim().replaceAll("\\r\\n", "\n");
+        String normalizedActual = actual.trim().replaceAll("\\r\\n", "\n");
+
+        return normalizedExpected.equals(normalizedActual);
     }
 
     /**
@@ -459,10 +807,6 @@ public class EvaluationService {
                 .codingPassed(evaluation.getCodingPassed())
                 .codingTotal(evaluation.getCodingTotal())
                 .evaluatedAt(evaluation.getEvaluatedAt())
-                .evaluatorId(evaluation.getEvaluatorId())
-                .remarks(evaluation.getRemarks())
-                .breakdown(evaluation.getBreakdown())
-                .detailedResults(evaluation.getDetailedResults())
                 .questionResults(evaluation.getQuestionResults())
                 .passed(evaluation.getPassed())
                 .passingThreshold(evaluation.getPassingThreshold())

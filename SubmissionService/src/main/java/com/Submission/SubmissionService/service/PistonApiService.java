@@ -11,8 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @Slf4j
@@ -22,7 +20,6 @@ public class PistonApiService {
     private String pistonApiUrl;
 
     private final RestTemplate restTemplate;
-    private final Lock rateLimitLock = new ReentrantLock();
     private long lastRequestTime = 0;
     private static final long MIN_REQUEST_INTERVAL_MS = 250; // 250ms to be safe (API limit is 200ms)
 
@@ -32,28 +29,24 @@ public class PistonApiService {
 
     /**
      * Enforce rate limiting for Piston API (1 request per 200ms)
+     * This method ensures proper spacing between requests
      */
-    private void enforceRateLimit() {
-        rateLimitLock.lock();
-        try {
-            long currentTime = System.currentTimeMillis();
-            long timeSinceLastRequest = currentTime - lastRequestTime;
+    private synchronized void waitForRateLimit() {
+        long currentTime = System.currentTimeMillis();
+        long timeSinceLastRequest = currentTime - lastRequestTime;
 
-            if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
-                long waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest;
-                log.debug("Rate limiting: waiting {}ms before next request", waitTime);
-                try {
-                    Thread.sleep(waitTime);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.warn("Rate limit wait interrupted", e);
-                }
+        if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
+            long waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest;
+            log.debug("Rate limiting: waiting {}ms before next request", waitTime);
+            try {
+                Thread.sleep(waitTime);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Rate limit wait interrupted", e);
             }
-
-            lastRequestTime = System.currentTimeMillis();
-        } finally {
-            rateLimitLock.unlock();
         }
+
+        lastRequestTime = System.currentTimeMillis();
     }
 
     /**
@@ -62,7 +55,7 @@ public class PistonApiService {
     public List<PistonRuntimeResponse> getRuntimes() {
         try {
             log.info("Fetching available runtimes from Piston API");
-            enforceRateLimit();
+            waitForRateLimit();
             String url = pistonApiUrl + "/runtimes";
 
             ResponseEntity<List<PistonRuntimeResponse>> response = restTemplate.exchange(
@@ -82,14 +75,11 @@ public class PistonApiService {
     }
 
     /**
-     * Execute code using Piston API
+     * Execute code using Piston API with proper rate limiting
      */
     public RunCodeResponse executeCode(RunCodeRequest request) {
         try {
             log.info("Executing {} code via Piston API", request.getLanguage());
-
-            // Enforce rate limiting
-            enforceRateLimit();
 
             // Prepare the request payload for Piston
             Map<String, Object> pistonRequest = new HashMap<>();
@@ -141,29 +131,9 @@ public class PistonApiService {
 
             log.debug("Piston request: {}", pistonRequest);
 
-            // Make the API call
-            String url = pistonApiUrl + "/execute";
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(pistonRequest, headers);
-
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    entity,
-                    Map.class
-            );
-
-            // Parse the response
-            Map<String, Object> responseBody = response.getBody();
-            if (responseBody == null) {
-                throw new RuntimeException("Empty response from Piston API");
-            }
-
-            log.info("Code execution completed. Language: {}, Version: {}",
-                    responseBody.get("language"), responseBody.get("version"));
-
-            return mapPistonResponse(responseBody);
+            // Enforce rate limiting and make the API call
+            // Note: Using synchronized method to ensure proper spacing
+            return executeWithRateLimit(pistonRequest);
 
         } catch (Exception e) {
             log.error("Error executing code via Piston API: {}", e.getMessage(), e);
@@ -178,6 +148,61 @@ public class PistonApiService {
             errorResponse.setRun(runResult);
 
             return errorResponse;
+        }
+    }
+
+    /**
+     * Execute the Piston API call with rate limiting
+     * Synchronized to ensure requests are properly spaced
+     */
+    private synchronized RunCodeResponse executeWithRateLimit(Map<String, Object> pistonRequest) {
+        // Wait for rate limit
+        long currentTime = System.currentTimeMillis();
+        long timeSinceLastRequest = currentTime - lastRequestTime;
+
+        if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
+            long waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest;
+            log.debug("Rate limiting: waiting {}ms before next request", waitTime);
+            try {
+                Thread.sleep(waitTime);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Rate limit wait interrupted", e);
+            }
+        }
+
+        try {
+            // Make the API call
+            String url = pistonApiUrl + "/execute";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(pistonRequest, headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    Map.class
+            );
+
+            // Update last request time AFTER successful call
+            lastRequestTime = System.currentTimeMillis();
+
+            // Parse the response
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null) {
+                throw new RuntimeException("Empty response from Piston API");
+            }
+
+            log.info("Code execution completed. Language: {}, Version: {}",
+                    responseBody.get("language"), responseBody.get("version"));
+
+            return mapPistonResponse(responseBody);
+
+        } catch (Exception e) {
+            // Update last request time even on failure to maintain rate limit
+            lastRequestTime = System.currentTimeMillis();
+            throw e;
         }
     }
 
