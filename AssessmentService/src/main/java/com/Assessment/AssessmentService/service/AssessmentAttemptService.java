@@ -20,9 +20,11 @@ public class AssessmentAttemptService {
     private final AssessmentRepository assessmentRepository;
     private final AssessmentCandidateRepository assessmentCandidateRepository;
     private final RestTemplate restTemplate;
-    
+    private final NotificationPublisher notificationPublisher;
+
     private static final String QUESTION_SERVICE_URL = "http://localhost:8082";
     private static final String SUBMISSION_SERVICE_URL = "http://localhost:8083";
+    private static final String AUTH_SERVICE_URL = "http://localhost:8080";
 
     /**
      * Start an assessment attempt for a candidate
@@ -71,6 +73,25 @@ public class AssessmentAttemptService {
             assessmentCandidateRepository.save(candidate);
         }
         
+        // Fetch user details from AuthService
+        try {
+            Map<String, Object> userDetails = fetchUserDetails(userRef);
+            String userEmail = (String) userDetails.get("email");
+            String userName = (String) userDetails.get("username");
+
+            // Send assessment started notification
+            notificationPublisher.sendAssessmentStartedNotification(
+                userRef,
+                userEmail,
+                userName,
+                assessment.getName(),
+                assessment.getCompany() != null ? assessment.getCompany().getName() : "Unknown",
+                assessment.getDurationMinutes()
+            );
+        } catch (Exception e) {
+            log.error("Failed to send assessment started notification: {}", e.getMessage());
+        }
+
         // Return assessment data without calling getAssessmentAttemptData to avoid infinite loops
         Map<String, Object> structure = getAssessmentStructure(assessmentId);
         
@@ -83,6 +104,22 @@ public class AssessmentAttemptService {
         return result;
     }
     
+    /**
+     * Fetch user details from AuthService
+     */
+    private Map<String, Object> fetchUserDetails(Integer userId) {
+        try {
+            String url = AUTH_SERVICE_URL + "/users/" + userId;
+            return restTemplate.getForObject(url, Map.class);
+        } catch (Exception e) {
+            log.error("Failed to fetch user details from AuthService: {}", e.getMessage());
+            Map<String, Object> fallback = new HashMap<>();
+            fallback.put("email", "user" + userId + "@example.com");
+            fallback.put("username", "User" + userId);
+            return fallback;
+        }
+    }
+
     /**
      * Get assessment attempt data including sections and questions
      */
@@ -340,6 +377,10 @@ public class AssessmentAttemptService {
         candidate.setBrowserInfo((String) submissionData.get("browserInfo"));
         candidate.setIpAddress((String) submissionData.get("ipAddress"));
         
+        // Extract user info from submission data
+        String userEmail = (String) submissionData.get("userEmail");
+        String userName = (String) submissionData.get("userName");
+
         // TODO: Calculate scores based on correct answers (will implement later)
         // For now, just initialize with basic analytics
         initializeBasicAnalytics(candidate, answers);
@@ -355,7 +396,7 @@ public class AssessmentAttemptService {
             submissionRequest.put("userId", String.valueOf(userRef));
             submissionRequest.put("testId", String.valueOf(assessmentId));
 
-            // Add metadata with assessment details
+            // Add metadata with assessment details including user info for notifications
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("assessmentCandidateId", candidate.getId());
             metadata.put("assessmentName", assessment.getName());
@@ -367,6 +408,9 @@ public class AssessmentAttemptService {
             metadata.put("submissionMethod", submissionMethod);
             metadata.put("browserInfo", candidate.getBrowserInfo());
             metadata.put("ipAddress", candidate.getIpAddress());
+            // Add user info for email notifications
+            metadata.put("userEmail", userEmail);
+            metadata.put("userName", userName);
             submissionRequest.put("metadata", metadata);
 
             String submissionUrl = SUBMISSION_SERVICE_URL + "/api/submissions";

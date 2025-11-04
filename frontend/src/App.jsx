@@ -13,6 +13,9 @@ import AssessmentInstructions from './pages/AssessmentInstructions';
 import AssessmentTest from './pages/AssessmentTest';
 import MyTests from './pages/MyTests';
 
+// User Components
+import UserLayout from './components/UserLayout';
+
 // Admin Components
 import AdminLayout from './components/AdminLayout';
 import AdminDashboard from './pages/AdminDashboard';
@@ -39,31 +42,22 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+
+          {/* User Routes - Protected by PrivateRoute and wrapped in UserLayout */}
           <Route
-            path="/dashboard" 
+            path="/"
             element={
               <PrivateRoute>
-                <Dashboard />
+                <UserLayout />
               </PrivateRoute>
             }
-          />
-          <Route 
-            path="/companies" 
-            element={
-              <PrivateRoute>
-                <Companies />
-              </PrivateRoute>
-            }
-          />
+          >
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="companies" element={<Companies />} />
+            <Route path="my-tests" element={<MyTests />} />
+          </Route>
+
           <Route
-            path="/my-tests"
-            element={
-              <PrivateRoute>
-                <MyTests />
-              </PrivateRoute>
-            }
-          />
-          <Route 
             path="/assessment/:assessmentId/instructions" 
             element={
               <PrivateRoute>

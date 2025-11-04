@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 public class SubmissionService {
 
     private final SubmissionRepository submissionRepository;
+    private final NotificationPublisher notificationPublisher;
 
     public SubmissionResponse createSubmission(CreateSubmissionRequest request) {
         log.info("Creating submission for user {} and test {}", request.getUserId(), request.getTestId());
@@ -33,6 +35,41 @@ public class SubmissionService {
 
         submission = submissionRepository.save(submission);
         log.info("Submission created with id: {}", submission.getId());
+
+        // Send notification after successful submission
+        try {
+            Map<String, Object> metadata = request.getMetadata();
+            if (metadata != null) {
+                String assessmentName = (String) metadata.get("assessmentName");
+                String companyName = (String) metadata.get("companyName");
+                Integer timeTakenMinutes = (Integer) metadata.get("timeTakenMinutes");
+
+                // Extract user info from metadata or use userId
+                String userEmail = (String) metadata.get("userEmail");
+                String userName = (String) metadata.get("userName");
+
+                // If email not in metadata, try to parse from userId or use a placeholder
+                if (userEmail == null) {
+                    // We'll need to get this from AuthService in production
+                    log.warn("User email not found in metadata for submission {}", submission.getId());
+                } else {
+                    Integer userId = Integer.parseInt(request.getUserId());
+
+                    notificationPublisher.sendAssessmentSubmittedNotification(
+                            userId,
+                            userEmail,
+                            userName != null ? userName : "User",
+                            assessmentName != null ? assessmentName : "Assessment",
+                            companyName != null ? companyName : "Company",
+                            timeTakenMinutes != null ? timeTakenMinutes : 0
+                    );
+                    log.info("Assessment submitted notification sent for submission {}", submission.getId());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to send submission notification: {}", e.getMessage());
+            // Don't fail the submission if notification fails
+        }
 
         return mapToResponse(submission);
     }

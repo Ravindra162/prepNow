@@ -7,7 +7,6 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ArrowLeftIcon,
   CalendarIcon,
   ChartBarIcon,
 } from '@heroicons/react/24/outline';
@@ -116,8 +115,8 @@ const MyTests = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -130,31 +129,17 @@ const MyTests = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <button
-                onClick={() => navigate('/companies')}
-                className="mr-4 p-2 hover:bg-gray-100 rounded-full"
-              >
-                <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">My Test Attempts</h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  View all your attempted assessments and scores
-                </p>
-              </div>
-            </div>
-          </div>
+    <div className="py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">My Test Attempts</h1>
+          <p className="text-sm text-gray-600 mt-2">
+            View all your attempted assessments and scores
+          </p>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Content */}
         {attempts.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">
             <ChartBarIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -199,82 +184,59 @@ const MyTests = () => {
                         <div>
                           <p className="text-sm text-gray-500">Started</p>
                           <p className="text-sm font-medium text-gray-900">
-                            {formatDate(attempt.startedAt)}
+                            {formatDate(attempt.createdAt)}
                           </p>
                         </div>
 
-                        {/* Completed At */}
-                        <div>
-                          <p className="text-sm text-gray-500">Completed</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {attempt.completedAt ? formatDate(attempt.completedAt) : 'In Progress'}
-                          </p>
-                        </div>
-
-                        {/* Time Taken */}
-                        <div>
-                          <p className="text-sm text-gray-500">Time Taken</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {formatDuration(attempt.timeTakenMinutes)}
-                          </p>
-                        </div>
+                        {/* Duration */}
+                        {attempt.timeTaken && (
+                          <div>
+                            <p className="text-sm text-gray-500">Time Taken</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {formatDuration(attempt.timeTaken)}
+                            </p>
+                          </div>
+                        )}
 
                         {/* Score */}
-                        <div>
-                          <p className="text-sm text-gray-500">Score</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {attempt.status === 'EVALUATED' ? (
-                              <span className="text-blue-600">
-                                {attempt.percentageScore?.toFixed(1)}%
-                              </span>
-                            ) : (
-                              <span className="text-yellow-600">Pending</span>
-                            )}
-                          </p>
-                        </div>
+                        {attempt.status === 'EVALUATED' && attempt.totalScore !== null && (
+                          <div>
+                            <p className="text-sm text-gray-500">Score</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {attempt.totalScore}/{attempt.maxScore || 'N/A'}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Percentage */}
+                        {attempt.status === 'EVALUATED' && attempt.percentageScore !== null && (
+                          <div>
+                            <p className="text-sm text-gray-500">Percentage</p>
+                            <p className={`text-sm font-medium ${
+                              attempt.percentageScore >= 80
+                                ? 'text-green-600'
+                                : attempt.percentageScore >= 60
+                                ? 'text-yellow-600'
+                                : 'text-red-600'
+                            }`}>
+                              {attempt.percentageScore.toFixed(1)}%
+                            </p>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Additional Stats for Evaluated Tests */}
+                      {/* Additional Info */}
                       {attempt.status === 'EVALUATED' && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                              <p className="text-xs text-gray-500">Total Questions</p>
-                              <p className="text-lg font-semibold text-gray-900">
-                                {attempt.totalQuestions || 0}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Attempted</p>
-                              <p className="text-lg font-semibold text-blue-600">
-                                {attempt.attemptedQuestions || 0}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Correct</p>
-                              <p className="text-lg font-semibold text-green-600">
-                                {attempt.correctAnswers || 0}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Incorrect</p>
-                              <p className="text-lg font-semibold text-red-600">
-                                {attempt.incorrectAnswers || 0}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Submission Method */}
-                      {attempt.submissionMethod && (
-                        <div className="mt-4">
-                          <p className="text-xs text-gray-500">
-                            Submission Method:{' '}
-                            <span className="text-gray-700 font-medium">
-                              {attempt.submissionMethod.replace('_', ' ')}
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">
+                              Result: {attempt.percentageScore >= 60 ? (
+                                <span className="text-green-600 font-medium">Passed ✓</span>
+                              ) : (
+                                <span className="text-red-600 font-medium">Not Passed ✗</span>
+                              )}
                             </span>
-                          </p>
+                          </div>
                         </div>
                       )}
                     </div>

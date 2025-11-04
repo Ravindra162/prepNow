@@ -24,9 +24,11 @@ public class EvaluationService {
     private final SubmissionRepository submissionRepository;
     private final RestTemplate restTemplate;
     private final PistonApiService pistonApiService;
+    private final NotificationPublisher notificationPublisher;
 
     private static final String ASSESSMENT_SERVICE_URL = "http://localhost:8081";
     private static final String QUESTION_SERVICE_URL = "http://localhost:8082";
+    private static final String AUTH_SERVICE_URL = "http://localhost:8080";
 
     /**
      * Evaluate a submission by comparing user answers with correct answers
@@ -254,6 +256,9 @@ public class EvaluationService {
 
         // 7. Sync scores back to AssessmentService
         syncScoresToAssessmentService(metadata, evaluation);
+
+        // 8. Send notification about evaluation completion
+        sendEvaluationNotification(submission, evaluation);
 
         return mapToResponse(evaluation);
     }
@@ -862,6 +867,79 @@ public class EvaluationService {
         } catch (Exception e) {
             log.error("❌ Failed to sync scores to AssessmentService: {}", e.getMessage());
             // Don't fail the evaluation if sync fails
+        }
+    }
+
+    /**
+     * Send notification about evaluation completion
+     */
+    private void sendEvaluationNotification(Submission submission, Evaluation evaluation) {
+        try {
+            String userId = submission.getUserId();
+            Map<String, Object> metadata = submission.getMetadata();
+
+            // Get assessment name and company name from metadata
+            String assessmentName = (String) metadata.get("assessmentName");
+            if (assessmentName == null) {
+                assessmentName = "Assessment";
+            }
+
+            String companyName = (String) metadata.get("companyName");
+            if (companyName == null) {
+                companyName = "Company";
+            }
+
+            // Fetch user details from AuthService
+            Map<String, Object> userDetails = fetchUserDetails(userId);
+            String userEmail = (String) userDetails.get("email");
+            String userName = (String) userDetails.get("username");
+
+            // Calculate percentage and pass status
+            double percentage = evaluation.getPercentageScore();
+            boolean isPassed = evaluation.getPassed() != null ? evaluation.getPassed() : false;
+
+            // Convert userId String to Integer
+            Integer userIdInt;
+            try {
+                userIdInt = Integer.parseInt(userId);
+            } catch (NumberFormatException e) {
+                log.error("Failed to parse userId to Integer: {}", userId);
+                userIdInt = 0;
+            }
+
+            // Send evaluation completed notification
+            notificationPublisher.sendEvaluationCompletedNotification(
+                userIdInt,
+                userEmail,
+                userName,
+                assessmentName,
+                companyName,
+                evaluation.getTotalScore(),
+                evaluation.getMaxScore(),
+                percentage,
+                isPassed
+            );
+
+            log.info("✓ Evaluation completion notification sent for user: {}", userId);
+        } catch (Exception e) {
+            log.error("❌ Failed to send evaluation notification: {}", e.getMessage());
+            // Don't fail the evaluation if notification fails
+        }
+    }
+
+    /**
+     * Fetch user details from AuthService
+     */
+    private Map<String, Object> fetchUserDetails(String userId) {
+        try {
+            String url = AUTH_SERVICE_URL + "/users/" + userId;
+            return restTemplate.getForObject(url, Map.class);
+        } catch (Exception e) {
+            log.error("Failed to fetch user details from AuthService: {}", e.getMessage());
+            Map<String, Object> fallback = new HashMap<>();
+            fallback.put("email", "user" + userId + "@example.com");
+            fallback.put("username", "User" + userId);
+            return fallback;
         }
     }
 }

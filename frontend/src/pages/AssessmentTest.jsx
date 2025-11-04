@@ -246,12 +246,14 @@ const AssessmentTest = () => {
       // Get user reference (using a simple hash of email for now)
       const userRef = getUserRef();
 
-      // Prepare submission data
+      // Prepare submission data with user information for notifications
       const submissionData = {
         answers: answers,
         submissionMethod: timeRemaining <= 0 ? 'TIME_EXPIRED' : 'MANUAL_SUBMIT',
         browserInfo: navigator.userAgent,
         ipAddress: null, // Will be set by backend if needed
+        userEmail: currentUser?.email,
+        userName: currentUser?.name || currentUser?.username || currentUser?.email?.split('@')[0],
       };
 
       console.log('Submitting assessment:', submissionData);
