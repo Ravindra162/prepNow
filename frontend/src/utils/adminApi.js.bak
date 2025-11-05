@@ -1,20 +1,24 @@
-import axios from "axios";
-import config from "../config";
+import axios from 'axios';
+
+// API endpoints for different services
+const QUESTION_SERVICE_URL = 'http://localhost:8082';
+const ASSESSMENT_SERVICE_URL = 'http://localhost:8081';
 
 // Create axios instances for different services
 const questionApi = axios.create({
-  baseURL: config.QUESTION_SERVICE_URL,
+  baseURL: QUESTION_SERVICE_URL,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
 });
 
 const assessmentApi = axios.create({
-  baseURL: config.ASSESSMENT_SERVICE_URL,
+  baseURL: ASSESSMENT_SERVICE_URL,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
 });
+
 // Add response interceptors for error handling
 const handleApiError = (error) => {
   console.error('API Error:', error);

@@ -1,13 +1,10 @@
-import axios from "axios";
-import config from "../config";
+import axios from 'axios';
+
+const API_BASE_URL = 'http://localhost:8080/auth'; // Update this with your backend URL
 
 const api = axios.create({
-  baseURL: config.API_BASE_URL,
+  baseURL: API_BASE_URL,
   headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true, // Important for cookies/sessions
-});
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Important for cookies/sessions
