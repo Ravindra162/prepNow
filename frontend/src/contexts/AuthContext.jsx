@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../utils/api';
+import { authApi as authService } from '../utils/api';
 import { toast } from 'react-hot-toast';
 
 const AuthContext = createContext();
