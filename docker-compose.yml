@@ -1,0 +1,139 @@
+
+services:
+  # ======================
+  # Application Services
+  # ======================
+
+  # AuthService
+  auth-service:
+    build:
+      context: ./AuthService
+      dockerfile: Dockerfile
+    container_name: auth-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5435/auth_service
+      SPRING_DATASOURCE_USERNAME: ravindra162
+      SPRING_DATASOURCE_PASSWORD: 7065
+      JWT_SECRET: your_jwt_secret_key_here_make_it_very_long_and_secure
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: ravnarravnar@gmail.com
+      SPRING_MAIL_PASSWORD: "hnvk hnab mdsf also"
+    ports:
+      - "8080:8080"
+    networks:
+      - prepnow-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # AssessmentService
+  assessment-service:
+    build:
+      context: ./AssessmentService
+      dockerfile: Dockerfile
+    container_name: assessment-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5433/assessment
+      SPRING_DATASOURCE_USERNAME: ravindra162
+      SPRING_DATASOURCE_PASSWORD: 7065
+      JWT_SECRET: your_jwt_secret_key_here_make_it_very_long_and_secure
+      SPRING_RABBITMQ_HOST: host.docker.internal
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+    ports:
+      - "8081:8081"
+    networks:
+      - prepnow-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # QuestionService
+  question-service:
+    build:
+      context: ./QuestionService
+      dockerfile: Dockerfile
+    container_name: question-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5434/QuestionsDB
+      SPRING_DATASOURCE_USERNAME: ravindra162
+      SPRING_DATASOURCE_PASSWORD: 7065
+      JWT_SECRET: your_jwt_secret_key_here_make_it_very_long_and_secure
+    ports:
+      - "8082:8082"
+    networks:
+      - prepnow-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # SubmissionService
+  submission-service:
+    build:
+      context: ./SubmissionService
+      dockerfile: Dockerfile
+    container_name: submission-service
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://ravindra162:7065@host.docker.internal:27017/submissiondb?authSource=admin
+      SPRING_RABBITMQ_HOST: host.docker.internal
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      JWT_SECRET: your_jwt_secret_key_here_make_it_very_long_and_secure
+      PISTON_API_URL: https://emkc.org/api/v2/piston
+      STORAGE_TYPE: local
+      STORAGE_LOCAL_PATH: /tmp/submissions
+    ports:
+      - "8083:8083"
+    volumes:
+      - submission-files:/tmp/submissions
+    networks:
+      - prepnow-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # NotificationService
+  notification-service:
+    build:
+      context: ./NotificationService
+      dockerfile: Dockerfile
+    container_name: notification-service
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://ravindra162:7065@host.docker.internal:27018/notificationDB?authSource=admin
+      SPRING_RABBITMQ_HOST: host.docker.internal
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: ravnarravnar@gmail.com
+      SPRING_MAIL_PASSWORD: "hnvk hnab mdsf also"
+      APP_EMAIL_FROM: noreply@prepnow.com
+      APP_EMAIL_FROM_NAME: PrepNow Platform
+    ports:
+      - "8086:8086"
+    networks:
+      - prepnow-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+
+# ======================
+# Networks
+# ======================
+networks:
+  prepnow-network:
+    external: true
+    name: prepnow-network
+
+# ======================
+# Volumes
+# ======================
+volumes:
+  submission-files:
+    name: submission-files
+

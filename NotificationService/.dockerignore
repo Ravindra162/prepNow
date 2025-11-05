@@ -1,0 +1,14 @@
+target/
+.mvn/
+*.class
+*.jar
+*.war
+*.ear
+.DS_Store
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.log
+
