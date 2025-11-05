@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Data
@@ -21,6 +20,6 @@ public class NotificationMessage implements Serializable {
     private String userName;
     private String assessmentName;
     private String companyName;
+    private String status;
     private Map<String, Object> additionalData;
-    private LocalDateTime timestamp;
 }

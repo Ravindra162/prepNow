@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,7 +25,6 @@ public class NotificationPublisher {
                                                    Integer durationMinutes) {
         Map<String, Object> additionalData = new HashMap<>();
         additionalData.put("durationMinutes", durationMinutes);
-        additionalData.put("startedAt", LocalDateTime.now().toString());
 
         NotificationMessage message = NotificationMessage.builder()
                 .notificationType("ASSESSMENT_STARTED")
@@ -36,7 +34,6 @@ public class NotificationPublisher {
                 .assessmentName(assessmentName)
                 .companyName(companyName)
                 .additionalData(additionalData)
-                .timestamp(LocalDateTime.now())
                 .build();
 
         publishNotification(message, RabbitMQConfig.ASSESSMENT_STARTED_KEY);
@@ -48,22 +45,32 @@ public class NotificationPublisher {
     public void sendAssessmentSubmittedNotification(Integer userId, String userEmail, String userName,
                                                      String assessmentName, String companyName,
                                                      Integer timeTakenMinutes) {
-        Map<String, Object> additionalData = new HashMap<>();
-        additionalData.put("timeTakenMinutes", timeTakenMinutes);
-        additionalData.put("submittedAt", LocalDateTime.now().toString());
+        try {
+            Map<String, Object> additionalData = new HashMap<>();
+            additionalData.put("timeTakenMinutes", timeTakenMinutes);
 
-        NotificationMessage message = NotificationMessage.builder()
-                .notificationType("ASSESSMENT_SUBMITTED")
-                .userId(userId)
-                .userEmail(userEmail)
-                .userName(userName)
-                .assessmentName(assessmentName)
-                .companyName(companyName)
-                .additionalData(additionalData)
-                .timestamp(LocalDateTime.now())
-                .build();
+            NotificationMessage message = NotificationMessage.builder()
+                    .notificationType("ASSESSMENT_SUBMITTED")
+                    .userId(userId)
+                    .userEmail(userEmail)
+                    .userName(userName)
+                    .assessmentName(assessmentName)
+                    .companyName(companyName)
+                    .status("SUBMITTED")
+                    .additionalData(additionalData)
+                    .build();
 
-        publishNotification(message, RabbitMQConfig.ASSESSMENT_SUBMITTED_KEY);
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.NOTIFICATION_EXCHANGE,
+                    RabbitMQConfig.ASSESSMENT_SUBMITTED_KEY,
+                    message
+            );
+
+            log.info("Published assessment submitted notification for user: {}", userId);
+        } catch (Exception e) {
+            log.error("Failed to publish notification for user {}: {}", userId, e.getMessage(), e);
+            throw new RuntimeException("Failed to publish notification", e);
+        }
     }
 
     /**
@@ -71,27 +78,34 @@ public class NotificationPublisher {
      */
     public void sendEvaluationCompletedNotification(Integer userId, String userEmail, String userName,
                                                      String assessmentName, String companyName,
-                                                     Double totalScore, Double maxScore,
-                                                     Double percentage, Boolean isPassed) {
-        Map<String, Object> additionalData = new HashMap<>();
-        additionalData.put("score", totalScore);
-        additionalData.put("maxScore", maxScore);
-        additionalData.put("percentage", percentage);
-        additionalData.put("isPassed", isPassed);
-        additionalData.put("evaluatedAt", LocalDateTime.now().toString());
+                                                     Double totalScore, Double maxScore) {
+        try {
+            Map<String, Object> additionalData = new HashMap<>();
+            additionalData.put("score", totalScore);
+            additionalData.put("maxScore", maxScore);
+            additionalData.put("percentage", maxScore > 0 ? (totalScore / maxScore) * 100 : 0);
 
-        NotificationMessage message = NotificationMessage.builder()
-                .notificationType("ASSESSMENT_EVALUATED")
-                .userId(userId)
-                .userEmail(userEmail)
-                .userName(userName)
-                .assessmentName(assessmentName)
-                .companyName(companyName)
-                .additionalData(additionalData)
-                .timestamp(LocalDateTime.now())
-                .build();
+            NotificationMessage message = NotificationMessage.builder()
+                    .notificationType("ASSESSMENT_EVALUATED")
+                    .userId(userId)
+                    .userEmail(userEmail)
+                    .userName(userName)
+                    .assessmentName(assessmentName)
+                    .companyName(companyName)
+                    .status("EVALUATED")
+                    .additionalData(additionalData)
+                    .build();
 
-        publishNotification(message, RabbitMQConfig.ASSESSMENT_EVALUATED_KEY);
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.NOTIFICATION_EXCHANGE,
+                    RabbitMQConfig.ASSESSMENT_EVALUATED_KEY,
+                    message
+            );
+
+            log.info("Published assessment evaluated notification for user: {}", userId);
+        } catch (Exception e) {
+            log.error("Failed to publish evaluation notification for user {}: {}", userId, e.getMessage(), e);
+        }
     }
 
     /**

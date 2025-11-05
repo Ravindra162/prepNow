@@ -168,6 +168,30 @@ public class AuthController {
         return ResponseEntity.ok("Logged out successfully");
     }
 
+    /**
+     * Get user details by ID (for inter-service communication)
+     * This endpoint is used by other services to fetch user email and username
+     */
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<?> getUserById(@PathVariable Long userId) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", user.getId());
+            response.put("username", user.getUsername());
+            response.put("email", user.getEmail());
+            response.put("role", user.getRole());
+            response.put("isAdmin", user.isAdmin());
+            response.put("emailVerified", user.isEmailVerified());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     // Add LoginRequest record
     private record LoginRequest(String email, String password) {}
 }

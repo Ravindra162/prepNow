@@ -14,11 +14,17 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
+    // Notification Exchange and Queue
     public static final String NOTIFICATION_EXCHANGE = "notification.exchange";
     public static final String NOTIFICATION_QUEUE = "notification.queue";
     public static final String ASSESSMENT_STARTED_KEY = "notification.assessment.started";
     public static final String ASSESSMENT_SUBMITTED_KEY = "notification.assessment.submitted";
     public static final String ASSESSMENT_EVALUATED_KEY = "notification.assessment.evaluated";
+
+    // Evaluation Exchange and Queue
+    public static final String EVALUATION_EXCHANGE = "evaluation.exchange";
+    public static final String EVALUATION_QUEUE = "evaluation.queue";
+    public static final String EVALUATION_REQUEST_KEY = "evaluation.request";
 
     @Bean
     public Queue notificationQueue() {
@@ -52,6 +58,25 @@ public class RabbitMQConfig {
                 .bind(notificationQueue())
                 .to(notificationExchange())
                 .with(ASSESSMENT_EVALUATED_KEY);
+    }
+
+    // Evaluation Queue Configuration
+    @Bean
+    public Queue evaluationQueue() {
+        return new Queue(EVALUATION_QUEUE, true); // durable queue
+    }
+
+    @Bean
+    public TopicExchange evaluationExchange() {
+        return new TopicExchange(EVALUATION_EXCHANGE);
+    }
+
+    @Bean
+    public Binding evaluationRequestBinding() {
+        return BindingBuilder
+                .bind(evaluationQueue())
+                .to(evaluationExchange())
+                .with(EVALUATION_REQUEST_KEY);
     }
 
     @Bean

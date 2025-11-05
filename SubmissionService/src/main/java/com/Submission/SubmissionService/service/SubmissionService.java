@@ -21,6 +21,7 @@ public class SubmissionService {
 
     private final SubmissionRepository submissionRepository;
     private final NotificationPublisher notificationPublisher;
+    private final EvaluationPublisher evaluationPublisher;
 
     public SubmissionResponse createSubmission(CreateSubmissionRequest request) {
         log.info("Creating submission for user {} and test {}", request.getUserId(), request.getTestId());
@@ -69,6 +70,19 @@ public class SubmissionService {
         } catch (Exception e) {
             log.error("Failed to send submission notification: {}", e.getMessage());
             // Don't fail the submission if notification fails
+        }
+
+        // Automatically publish evaluation request to queue
+        try {
+            evaluationPublisher.publishEvaluationRequest(
+                    submission.getId(),
+                    request.getUserId(),
+                    request.getTestId()
+            );
+            log.info("Evaluation request published to queue for submission {}", submission.getId());
+        } catch (Exception e) {
+            log.error("Failed to publish evaluation request: {}", e.getMessage());
+            // Don't fail the submission if queue publishing fails
         }
 
         return mapToResponse(submission);

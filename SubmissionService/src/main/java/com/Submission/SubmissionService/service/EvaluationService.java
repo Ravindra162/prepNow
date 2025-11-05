@@ -915,9 +915,7 @@ public class EvaluationService {
                 assessmentName,
                 companyName,
                 evaluation.getTotalScore(),
-                evaluation.getMaxScore(),
-                percentage,
-                isPassed
+                evaluation.getMaxScore()
             );
 
             log.info("✓ Evaluation completion notification sent for user: {}", userId);
@@ -931,15 +929,48 @@ public class EvaluationService {
      * Fetch user details from AuthService
      */
     private Map<String, Object> fetchUserDetails(String userId) {
+        // First try to get user details from AuthService
         try {
-            String url = AUTH_SERVICE_URL + "/users/" + userId;
-            return restTemplate.getForObject(url, Map.class);
+            String url = AUTH_SERVICE_URL + "/auth/users/" + userId;
+            log.info("Fetching user details from: {}", url);
+            Map<String, Object> userDetails = restTemplate.getForObject(url, Map.class);
+            if (userDetails != null && userDetails.get("email") != null) {
+                return userDetails;
+            }
         } catch (Exception e) {
-            log.error("Failed to fetch user details from AuthService: {}", e.getMessage());
-            Map<String, Object> fallback = new HashMap<>();
-            fallback.put("email", "user" + userId + "@example.com");
-            fallback.put("username", "User" + userId);
-            return fallback;
+            log.warn("Failed to fetch user details from AuthService: {}", e.getMessage());
         }
+        
+        // If AuthService fails, try to get email from submission metadata
+        try {
+            // Get submission for this user
+            List<Submission> userSubmissions = submissionRepository.findByUserId(userId);
+            if (!userSubmissions.isEmpty()) {
+                // Get the most recent submission
+                Submission latestSubmission = userSubmissions.get(0);
+                Map<String, Object> metadata = latestSubmission.getMetadata();
+                if (metadata != null) {
+                    String userEmail = (String) metadata.get("userEmail");
+                    String userName = (String) metadata.get("userName");
+                    
+                    if (userEmail != null) {
+                        Map<String, Object> result = new HashMap<>();
+                        result.put("email", userEmail);
+                        result.put("username", userName != null ? userName : "User" + userId);
+                        log.info("Using email from submission metadata: {}", userEmail);
+                        return result;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get user details from submission metadata: {}", e.getMessage());
+        }
+        
+        // If all else fails, log an error and use the example email as last resort
+        log.error("Could not determine user email for userId: {}. Using fallback email.", userId);
+        Map<String, Object> fallback = new HashMap<>();
+        fallback.put("email", "user" + userId + "@example.com");
+        fallback.put("username", "User" + userId);
+        return fallback;
     }
 }

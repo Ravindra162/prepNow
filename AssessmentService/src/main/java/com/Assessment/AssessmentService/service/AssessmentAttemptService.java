@@ -109,7 +109,8 @@ public class AssessmentAttemptService {
      */
     private Map<String, Object> fetchUserDetails(Integer userId) {
         try {
-            String url = AUTH_SERVICE_URL + "/users/" + userId;
+            String url = AUTH_SERVICE_URL + "/auth/users/" + userId;
+            log.info("Fetching user details from: {}", url);
             return restTemplate.getForObject(url, Map.class);
         } catch (Exception e) {
             log.error("Failed to fetch user details from AuthService: {}", e.getMessage());

@@ -5,8 +5,8 @@ set -e
 # PostgreSQL configuration
 # -----------------------------
 POSTGRES_IMAGE=postgres:16
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
+POSTGRES_USER=ravindra162
+POSTGRES_PASSWORD=7065
 
 postgres_containers=(
   "auth_cont:5435:auth_data:auth_db"
@@ -52,8 +52,8 @@ MONGO_IMAGE=mongo:latest
 MONGO_CONTAINER=submissionDB
 MONGO_PORT=27017
 MONGO_VOLUME=submission_data
-MONGO_USER=admin
-MONGO_PASSWORD=admin123
+MONGO_USER=ravindra162
+MONGO_PASSWORD=7065
 
 if ! docker volume ls -q | grep -w $MONGO_VOLUME >/dev/null; then
   echo "Creating MongoDB volume $MONGO_VOLUME"
