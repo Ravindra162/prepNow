@@ -22,9 +22,9 @@ public class AssessmentAttemptService {
     private final RestTemplate restTemplate;
     private final NotificationPublisher notificationPublisher;
 
-    private static final String QUESTION_SERVICE_URL = "http://localhost:8082";
-    private static final String SUBMISSION_SERVICE_URL = "http://localhost:8083";
-    private static final String AUTH_SERVICE_URL = "http://localhost:8080";
+    private static final String QUESTION_SERVICE_URL = "http://question-service:8082";
+    private static final String SUBMISSION_SERVICE_URL = "http://submission-service:8083";
+    private static final String AUTH_SERVICE_URL = "http://auth-service:8080";
 
     /**
      * Start an assessment attempt for a candidate

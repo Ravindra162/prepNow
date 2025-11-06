@@ -15,12 +15,10 @@ const AssessmentInstructions = () => {
   const navigate = useNavigate();
   const [assessment, setAssessment] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [cameraPermission, setCameraPermission] = useState(false);
   const [agreementChecked, setAgreementChecked] = useState(false);
 
   useEffect(() => {
     fetchAssessmentDetails();
-    checkCameraPermission();
   }, [assessmentId]);
 
   const fetchAssessmentDetails = async () => {
@@ -37,36 +35,7 @@ const AssessmentInstructions = () => {
     }
   };
 
-  const checkCameraPermission = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setCameraPermission(true);
-      // Stop the stream immediately after checking
-      stream.getTracks().forEach(track => track.stop());
-    } catch (error) {
-      console.error('Camera permission denied:', error);
-      setCameraPermission(false);
-    }
-  };
-
-  const requestCameraPermission = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setCameraPermission(true);
-      toast.success('Camera permission granted');
-      // Stop the stream immediately after checking
-      stream.getTracks().forEach(track => track.stop());
-    } catch (error) {
-      console.error('Camera permission denied:', error);
-      toast.error('Camera permission is required to start the assessment');
-    }
-  };
-
   const startAssessment = () => {
-    if (!cameraPermission) {
-      toast.error('Please allow camera access to proceed');
-      return;
-    }
     if (!agreementChecked) {
       toast.error('Please agree to the terms and conditions');
       return;
@@ -143,17 +112,6 @@ const AssessmentInstructions = () => {
               </div>
             </div>
 
-            <div className="flex items-start">
-              <CameraIcon className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
-              <div>
-                <p className="font-medium">Camera Monitoring</p>
-                <p className="text-sm text-gray-600">
-                  Your camera will be used to monitor the assessment for security purposes. 
-                  Please ensure good lighting and keep your face visible.
-                </p>
-              </div>
-            </div>
-
             <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
               <h3 className="font-medium text-amber-800 mb-2">Important Guidelines:</h3>
               <ul className="text-sm text-amber-700 space-y-1">
@@ -164,34 +122,6 @@ const AssessmentInstructions = () => {
                 <li>• Answer all questions before submitting</li>
                 <li>• Once submitted, you cannot change your answers</li>
               </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* System Check */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">System Check</h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <CameraIcon className="h-5 w-5 text-gray-500 mr-3" />
-                <span className="text-gray-700">Camera Access</span>
-              </div>
-              <div className="flex items-center">
-                {cameraPermission ? (
-                  <>
-                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
-                    <span className="text-green-600 text-sm">Granted</span>
-                  </>
-                ) : (
-                  <button
-                    onClick={requestCameraPermission}
-                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Allow Camera
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -207,8 +137,7 @@ const AssessmentInstructions = () => {
               className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label htmlFor="agreement" className="ml-3 text-sm text-gray-700">
-              I have read and understood all the instructions. I agree to the terms and conditions 
-              and understand that this assessment is being monitored for security purposes.
+              I have read and understood all the instructions. I agree to the terms and conditions.
             </label>
           </div>
 
@@ -221,7 +150,7 @@ const AssessmentInstructions = () => {
             </button>
             <button
               onClick={startAssessment}
-              disabled={!cameraPermission || !agreementChecked}
+              disabled={!agreementChecked}
               className="px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             >
               Start Assessment

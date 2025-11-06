@@ -101,13 +101,14 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const response = await authService.login(email, password);
+      const data = response.data; // Extract data from Axios response
       
       // Save user data including role to local storage
       const user = {
         email,
-        name: response.username || email.split('@')[0],
-        role: response.role || 'USER',
-        isAdmin: response.isAdmin || false,
+        name: data.username || email.split('@')[0],
+        role: data.role || 'USER',
+        isAdmin: data.isAdmin || false,
         isAuthenticated: true
       };
       
@@ -116,7 +117,7 @@ export function AuthProvider({ children }) {
       
       return { 
         success: true, 
-        username: response.username,
+        username: data.username,
         role: user.role,
         isAdmin: user.isAdmin
       };

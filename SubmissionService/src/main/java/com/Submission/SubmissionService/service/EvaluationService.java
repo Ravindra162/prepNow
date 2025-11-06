@@ -26,9 +26,9 @@ public class EvaluationService {
     private final PistonApiService pistonApiService;
     private final NotificationPublisher notificationPublisher;
 
-    private static final String ASSESSMENT_SERVICE_URL = "http://localhost:8081";
-    private static final String QUESTION_SERVICE_URL = "http://localhost:8082";
-    private static final String AUTH_SERVICE_URL = "http://localhost:8080";
+    private static final String ASSESSMENT_SERVICE_URL = "http://assessment-service:8081";
+    private static final String QUESTION_SERVICE_URL = "http://question-service:8082";
+    private static final String AUTH_SERVICE_URL = "http://auth-service:8080";
 
     /**
      * Evaluate a submission by comparing user answers with correct answers

@@ -96,10 +96,10 @@ public class JwtService {
     public void createCookie(String token, HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from("jwt", token)
                 .httpOnly(true)
-                .secure(true)
+                .secure(false)  // Set to false for HTTP (use true only for HTTPS)
                 .path("/")
                 .maxAge(WEEK_IN_MILLISECONDS / 1000) // Convert to seconds
-                .sameSite("Strict")
+                .sameSite("Lax")  // Changed from Strict to Lax for better compatibility
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
@@ -108,10 +108,10 @@ public class JwtService {
     public void clearCookie(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from("jwt", "")
                 .httpOnly(true)
-                .secure(true)
+                .secure(false)  // Set to false for HTTP (use true only for HTTPS)
                 .path("/")
                 .maxAge(0)
-                .sameSite("Strict")
+                .sameSite("Lax")  // Changed from Strict to Lax for better compatibility
                 .build();
 
         response.addHeader("Set-Cookie", cookie.toString());

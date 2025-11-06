@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import Split from 'react-split';
 import './CodingQuestion.css';
+import config from '../config';
 import {
   PlayIcon,
   CheckCircleIcon,
@@ -47,7 +48,7 @@ const CodingQuestion = ({ question, answer, onAnswerChange }) => {
         const results = await Promise.all(
           question.testCases.map(async (testCase, idx) => {
             try {
-              const response = await fetch('http://localhost:8083/api/code/run', {
+              const response = await fetch(`/api/code/run`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -94,7 +95,7 @@ const CodingQuestion = ({ question, answer, onAnswerChange }) => {
         console.log('Test results:', results);
       } else {
         // No test cases, just run the code once
-        const response = await fetch('http://localhost:8083/api/code/run', {
+        const response = await fetch(`/api/code/run`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

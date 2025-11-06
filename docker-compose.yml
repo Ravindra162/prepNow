@@ -1,6 +1,43 @@
 
 services:
   # ======================
+  # Reverse Proxy
+  # ======================
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    networks:
+      - prepnow-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - auth-service
+      - assessment-service
+      - question-service
+      - submission-service
+      - notification-service
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "5173:80"
+    networks:
+      - prepnow-network
+    restart: unless-stopped
+
+  # ======================
   # Application Services
   # ======================
 
@@ -11,7 +48,7 @@ services:
       dockerfile: Dockerfile
     container_name: auth-service
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5435/auth_service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://auth_cont:5432/auth_service
       SPRING_DATASOURCE_USERNAME: ravindra162
       SPRING_DATASOURCE_PASSWORD: 7065
       JWT_SECRET: your_jwt_secret_key_here_make_it_very_long_and_secure
@@ -34,11 +71,11 @@ services:
       dockerfile: Dockerfile
     container_name: assessment-service
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5433/assessment
+      SPRING_DATASOURCE_URL: jdbc:postgresql://assessment_cont:5432/assessment
       SPRING_DATASOURCE_USERNAME: ravindra162
       SPRING_DATASOURCE_PASSWORD: 7065
       JWT_SECRET: your_jwt_secret_key_here_make_it_very_long_and_secure
-      SPRING_RABBITMQ_HOST: host.docker.internal
+      SPRING_RABBITMQ_HOST: rabbit_mq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
@@ -57,7 +94,7 @@ services:
       dockerfile: Dockerfile
     container_name: question-service
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5434/QuestionsDB
+      SPRING_DATASOURCE_URL: jdbc:postgresql://questions_cont:5432/QuestionsDB
       SPRING_DATASOURCE_USERNAME: ravindra162
       SPRING_DATASOURCE_PASSWORD: 7065
       JWT_SECRET: your_jwt_secret_key_here_make_it_very_long_and_secure
@@ -76,8 +113,8 @@ services:
       dockerfile: Dockerfile
     container_name: submission-service
     environment:
-      SPRING_DATA_MONGODB_URI: mongodb://ravindra162:7065@host.docker.internal:27017/submissiondb?authSource=admin
-      SPRING_RABBITMQ_HOST: host.docker.internal
+      SPRING_DATA_MONGODB_URI: mongodb://ravindra162:7065@submission_cont:27017/submissiondb?authSource=admin
+      SPRING_RABBITMQ_HOST: rabbit_mq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
@@ -102,8 +139,8 @@ services:
       dockerfile: Dockerfile
     container_name: notification-service
     environment:
-      SPRING_DATA_MONGODB_URI: mongodb://ravindra162:7065@host.docker.internal:27018/notificationDB?authSource=admin
-      SPRING_RABBITMQ_HOST: host.docker.internal
+      SPRING_DATA_MONGODB_URI: mongodb://ravindra162:7065@notification_cont:27017/notificationDB?authSource=admin
+      SPRING_RABBITMQ_HOST: rabbit_mq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
