@@ -79,14 +79,14 @@ public class AuthController {
     }
 
     @PostMapping("/verify-email")
-    public ResponseEntity<?> verifyEmail(@RequestParam String email, @RequestParam String otp) {
+    public ResponseEntity<?> verifyEmail(@RequestBody VerifyEmailRequest request) {
         try {
-            if (otpService.isOtpExpired(email)) {
+            if (otpService.isOtpExpired(request.email())) {
                 return ResponseEntity.badRequest().body("OTP has expired. Please request a new one.");
             }
 
-            if (otpService.validateOTP(email, otp)) {
-                User user = userRepository.findByEmail(email)
+            if (otpService.validateOTP(request.email(), request.otp())) {
+                User user = userRepository.findByEmail(request.email())
                         .orElseThrow(() -> new RuntimeException("User not found"));
                 user.setEmailVerified(true);
                 userRepository.save(user);
@@ -99,17 +99,17 @@ public class AuthController {
     }
 
     @PostMapping("/resend-otp")
-    public ResponseEntity<?> resendOtp(@RequestParam String email) {
-        if (!userRepository.findByEmail(email).isPresent()) {
+    public ResponseEntity<?> resendOtp(@RequestBody ResendOtpRequest request) {
+        if (!userRepository.findByEmail(request.email()).isPresent()) {
             return ResponseEntity.badRequest().body("Email not registered");
         }
 
         // Clean up any existing OTP for this email
-        otpService.clearOTP(email);
+        otpService.clearOTP(request.email());
 
         try {
-            String otp = otpService.generateOTP(email);
-            emailService.sendOtpEmail(email, otp);
+            String otp = otpService.generateOTP(request.email());
+            emailService.sendOtpEmail(request.email(), otp);
 
             Map<String, String> response = new HashMap<>();
             response.put("message", "New OTP sent successfully. Valid for 2 minutes.");
@@ -194,4 +194,10 @@ public class AuthController {
 
     // Add LoginRequest record
     private record LoginRequest(String email, String password) {}
+
+    // Add VerifyEmailRequest record
+    private record VerifyEmailRequest(String email, String otp) {}
+    
+    // Add ResendOtpRequest record
+    private record ResendOtpRequest(String email) {}
 }
